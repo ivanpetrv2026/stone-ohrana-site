@@ -419,6 +419,35 @@
     </div>
   </div>
 
+  <!-- Полное удаление поста: только с ПИН конструктора -->
+  <div id="deletePostModal" class="fixed inset-0 z-[70] hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-3">
+    <div class="th-card border rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden">
+      <div class="flex items-start justify-between gap-2 p-4 border-b border-slate-800/80">
+        <div class="min-w-0">
+          <h3 class="text-sm font-semibold text-white">Удалить пост полностью</h3>
+          <p class="text-[11px] text-slate-400 mt-0.5">Без архива — действие необратимо</p>
+        </div>
+        <button type="button" id="closeDeletePostModalBtn" class="w-7 h-7 rounded-lg bg-slate-800/70 text-slate-400 hover:text-white text-xs shrink-0">✕</button>
+      </div>
+      <div class="p-4 space-y-3 text-xs">
+        <div class="p-3 rounded-xl bg-rose-500/10 border border-rose-500/25 text-[11px] text-rose-200 leading-relaxed">
+          Пост <b id="deletePostLabel"></b> исчезнет из матрицы. С сотрудников он будет снят,
+          истории чекинов и назначения удалятся, в заявках пост уберётся из приоритетов.
+          Отменить это нельзя — архив не создаётся.
+        </div>
+        <label class="block">
+          <span class="text-[10px] text-slate-400">ПИН конструктора</span>
+          <input id="deletePostPin" type="password" inputmode="numeric" maxlength="12" autocomplete="off"
+            placeholder="••••" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-100 outline-none focus:border-blue-500 text-xs">
+        </label>
+        <button type="button" data-action="confirm-delete-post" data-num="0" id="confirmDeletePostBtn"
+          class="w-full py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-xs font-semibold text-white">
+          Удалить пост навсегда
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Модалка ручного редактирования сотрудника / замены поста -->
   <div id="empModal" class="fixed inset-0 z-[60] hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-3">
     <div class="th-card border rounded-2xl max-w-md w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
@@ -594,6 +623,7 @@
       bookingStart: '', // заполняется ближайшим якорем цикла (13 или 28 число) в ensurePlan()
       bookingPriorities: [1, 8],
       bookingBusy: false, // true, пока заявка в полёте — блокирует кнопку и показывает прогресс
+      myBooking: null,   // своя неотменённая заявка: бронировать можно только один раз
       // Озвучка вопросов теста: по умолчанию включена, выбор запоминается
       testVoice: (() => { try { return localStorage.getItem('stone_test_voice') !== '0'; } catch (_) { return true; } })(),
       reminderT7Added: false,
@@ -1268,6 +1298,21 @@
               Бонус к приоритету выбора поста: 3–5 мес. +20, 6–11 мес. +35, 12 мес. +50. Костяк дополнительно +100, дисциплина −60…+30.
             </p>
 
+            ${state.myBooking ? `
+              <div class="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 space-y-1.5">
+                <div class="text-[11px] font-semibold text-emerald-300">✓ Заявка уже отправлена</div>
+                <p class="text-[10px] text-emerald-200/80 leading-relaxed">
+                  ${state.myBooking.desired_start_date || state.myBooking.desired_start || '—'} — ${state.myBooking.desired_end_date || state.myBooking.desired_end || '—'}
+                  · статус: ${bookingStatusLabel(state.myBooking.booking_status || state.myBooking.status)}.
+                  Бронировать второй раз нельзя — план можно продолжать сохранять.
+                </p>
+                ${state.myBooking.booking_status === 'open' || state.myBooking.status === 'open' ? `
+                  <button type="button" data-action="cancel-booking" data-id="${state.myBooking.id}" class="text-[10px] px-2 py-1 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 hover:text-white">
+                    Отменить заявку и забронировать заново
+                  </button>` : ''}
+              </div>
+            ` : ''}
+
             ${state.bookingBusy ? `
               <div class="p-3 rounded-xl bg-blue-500/10 border border-blue-500/30 space-y-2">
                 <div class="flex items-center gap-2 text-xs font-medium text-blue-200">
@@ -1282,8 +1327,8 @@
               <button type="button" data-action="save-plan" ${state.bookingBusy ? 'disabled' : ''} class="flex-1 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-medium text-slate-200 disabled:opacity-50 disabled:cursor-not-allowed">
                 Сохранить план
               </button>
-              <button type="button" data-action="submit-booking" ${state.bookingBusy ? 'disabled' : ''} class="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-semibold text-white disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5">
-                ${state.bookingBusy ? '<span class="spinner"></span>Отправляю…' : 'Отправить заявку'}
+              <button type="button" data-action="submit-booking" ${state.bookingBusy || state.myBooking ? 'disabled' : ''} class="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-semibold text-white disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5">
+                ${state.bookingBusy ? '<span class="spinner"></span>Отправляю…' : state.myBooking ? 'Заявка уже есть' : 'Отправить заявку'}
               </button>
             </div>
           </div>
@@ -1374,6 +1419,7 @@
                 <div class="flex items-center gap-1 shrink-0">
                   <button type="button" data-action="edit-post" data-num="${p.num}" title="Редактировать" class="w-6 h-6 rounded-lg bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-200">✎</button>
                   <button type="button" data-action="toggle-post" data-num="${p.num}" title="${p.isActive === false ? 'Вернуть в работу' : 'Архивировать'}" class="w-6 h-6 rounded-lg ${p.isActive === false ? 'bg-emerald-600/25 text-emerald-300' : 'bg-slate-800 hover:bg-rose-600/30 text-slate-300'} text-[10px]">${p.isActive === false ? '↺' : '⏻'}</button>
+                  ${[19, 20].includes(Number(p.num)) ? '' : `<button type="button" data-action="delete-post" data-num="${p.num}" title="Удалить полностью (ПИН 1111)" class="w-6 h-6 rounded-lg bg-slate-800 hover:bg-red-600/40 text-[10px] text-slate-400 hover:text-white">🗑</button>`}
                 </div>` : ''}
             </div>
             <div class="flex items-center justify-between gap-2 text-[10px]">
@@ -2554,6 +2600,10 @@
         return;
       } else if (act === 'submit-booking') {
         if (state.bookingBusy) return;
+        if (state.myBooking) {
+          showToast('Заявка уже есть — бронировать можно только один раз.');
+          return;
+        }
         const months = planMonthsFrom(state.planBlocks);
         const horizon = planHorizonCode(months);
         const hLabel = horizon === '1y' ? '1–2 года (+40%)' : horizon === '6m' ? '6 мес (+25%)' : horizon === '3m' ? '3 мес (+10%)' : '1 мес (база)';
@@ -2605,12 +2655,35 @@
         }
 
         console.warn('Booking write failed:', bookRes.reason);
+        state.bookingBusy = false;
+        const reason = bookRes.reason || {};
+        // Сервер отказал не из-за связи, а потому что заявка уже есть — не показываем
+        // ложное «добавлено локально», иначе человек думает, что бронь прошла.
+        if (reason.code === 'BOOKING_EXISTS' || /уже есть заявка/i.test(String(reason.message || ''))) {
+          showToast('Заявка уже есть — бронировать можно только один раз.');
+          await loadCloudData(true).catch(() => {});
+          render();
+          return;
+        }
         state.applicants.unshift(draft);
         state.activeTab = 'applicants';
-        state.bookingBusy = false;
         render();
         setLiveBanner(`Supabase недоступен: бронь (${hLabel}) добавлена только локально.`);
         showToast('Не удалось записать в Supabase — заявка локальная.');
+      } else if (act === 'cancel-booking') {
+        const id = Number(el.dataset.id);
+        if (!id) return;
+        el.disabled = true;
+        try {
+          await cloudCancelBooking(id);
+          showToast('Заявка отменена — можно бронировать заново.');
+          await loadCloudData(true);
+          render();
+        } catch (err) {
+          showToast('Не удалось отменить: ' + (err && err.message ? err.message : err));
+          el.disabled = false;
+        }
+        return;
       } else if (act === 'approve-shift') {
         const id = Number(el.dataset.id);
         const app = state.applicants.find(x => x.id === id);
@@ -2702,13 +2775,36 @@
       } else if (act === 'toggle-post') {
         const num = Number(el.dataset.num);
         const cur = (state.postsAll || []).find(p => p.num === num);
-        const next = !(cur && cur.isActive === false);
+        // isActive === true (активен) → archived (false). Раньше логика была наоборот:
+        // кнопка «Архивировать» отправляла is_active:true, поэтому пост оставался в работе.
+        const next = cur ? cur.isActive === false : false;
         try {
           await stoneApi('toggle-post', { post_number: num, is_active: next });
-          showToast(next ? `Пост №${num} возвращён в работу.` : `Пост №${num} в архиве.`);
+          showToast(next ? `Пост №${num} возвращён в работу.` : `Пост №${num} убран в архив.`);
           await loadCloudData(true);
         } catch (err) {
           showToast('Не удалось: ' + (err && err.message ? err.message : err));
+        }
+        return;
+      } else if (act === 'delete-post') {
+        const num = Number(el.dataset.num);
+        openDeletePostModal(num);
+        return;
+      } else if (act === 'confirm-delete-post') {
+        const num = Number(el.dataset.num);
+        const pin = (document.getElementById('deletePostPin')?.value || '').trim();
+        if (!pin) { showToast('Введите ПИН конструктора'); return; }
+        const btn = el;
+        btn.disabled = true;
+        try {
+          await stoneApi('delete-post', { post_number: num, pin });
+          document.getElementById('deletePostModal').classList.add('hidden');
+          showToast(`Пост №${num} полностью удалён.`);
+          await loadCloudData(true);
+        } catch (err) {
+          showToast('Не удалось: ' + (err && err.message ? err.message : err));
+        } finally {
+          btn.disabled = false;
         }
         return;
       } else if (act === 'edit-employee') {
@@ -2883,6 +2979,7 @@
         if (Array.isArray(data.applicants)) {
           state.applicants = data.applicants;
         }
+        state.myBooking = data.my_booking ?? null;
         if (data.setup) state.setupStatus = data.setup;
         applyPinStatus(data.pin_status);
         if (data.me) {
@@ -3275,6 +3372,16 @@
       return d.toISOString().slice(0, 10);
     }
 
+    function bookingStatusLabel(status) {
+      const map = {
+        open: 'открыта',
+        shift_approved: 'вахта утверждена',
+        post_confirmed: 'пост подтверждён',
+        cancelled: 'отменена'
+      };
+      return map[status] || String(status || 'открыта');
+    }
+
     async function cloudCreateBooking(employeeId, start, end, horizon, anyPost, priorityNums) {
       return stoneApi('create-booking', {
         start: start,
@@ -3283,6 +3390,10 @@
         any_post: anyPost,
         priority_posts: priorityNums
       });
+    }
+
+    async function cloudCancelBooking(bookingId) {
+      return stoneApi('cancel-booking', { booking_id: bookingId });
     }
 
     async function cloudApproveRotation(rotationId, force) {
@@ -3325,6 +3436,17 @@
       const msg = String(err && err.message ? err.message : err);
       if (!/допуск|модул|аттестац/i.test(msg)) return false;
       return window.confirm(`${msg}\n\nПровести экстренную замену без аттестации?\nДействие попадёт в журнал audit_logs.`);
+    }
+
+    function openDeletePostModal(num) {
+      const post = (state.postsAll || []).find(p => p.num === num);
+      document.getElementById('deletePostLabel').textContent = `№${num}${post?.name ? ' «' + post.name + '»' : ''}`;
+      const btn = document.getElementById('confirmDeletePostBtn');
+      if (btn) btn.dataset.num = String(num);
+      const pin = document.getElementById('deletePostPin');
+      if (pin) pin.value = '';
+      document.getElementById('deletePostModal').classList.remove('hidden');
+      setTimeout(() => pin?.focus(), 50);
     }
 
     function openPostModal(num) {
@@ -4149,6 +4271,7 @@
       if (modal) modal.addEventListener('click', (e) => { if (e.target.id === id) modal.classList.add('hidden'); });
     }
     bindModal('postModal', 'closePostModalBtn');
+    bindModal('deletePostModal', 'closeDeletePostModalBtn');
     bindModal('empModal', 'closeEmpModalBtn');
     bindModal('configModal', 'closeConfigModalBtn');
     bindModal('testModal', 'closeTestModalBtn');
@@ -4210,4 +4333,4 @@
   </script>
 </body>
 </html>
-<!-- build: 2026-11-24T16:34:09Z | v18 · OpenRouter: ротация ключей, ответ ~2 с, честный текст про квоту -->
+<!-- build: 2026-11-24T16:58:09Z | v19 · удаление поста по ПИН 1111, одна заявка на сотрудника -->
