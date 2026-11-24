@@ -581,7 +581,7 @@
     // Версия сборки. Публикуется в version.json и проверяется при каждом открытии:
     // если Telegram закешировал старую страницу — приложение само переоткроется
     // с адресом ?v=<актуальная версия>, минуя кэш Mini App.
-    const APP_VERSION = 'v20';
+    const APP_VERSION = 'v21';
     (function ensureFreshBuild() {
       try {
         const u = new URL(window.location.href);
@@ -2839,23 +2839,6 @@
         const num = Number(el.dataset.num);
         openDeletePostModal(num);
         return;
-      } else if (act === 'confirm-delete-post') {
-        const num = Number(el.dataset.num);
-        const pin = (document.getElementById('deletePostPin')?.value || '').trim();
-        if (!pin) { showToast('Введите ПИН конструктора'); return; }
-        const btn = el;
-        btn.disabled = true;
-        try {
-          await stoneApi('delete-post', { post_number: num, pin });
-          document.getElementById('deletePostModal').classList.add('hidden');
-          showToast(`Пост №${num} полностью удалён.`);
-          await loadCloudData(true);
-        } catch (err) {
-          showToast('Не удалось: ' + (err && err.message ? err.message : err));
-        } finally {
-          btn.disabled = false;
-        }
-        return;
       } else if (act === 'edit-employee') {
         openEmpModal(Number(el.dataset.id));
         return;
@@ -4325,6 +4308,36 @@
     }
     bindModal('postModal', 'closePostModalBtn');
     bindModal('deletePostModal', 'closeDeletePostModalBtn');
+    // Модалка удаления лежит вне #mainContent, поэтому её кнопка подтверждения
+    // требует собственного обработчика — общий delegation сюда не доходит.
+    async function confirmDeletePost(btn) {
+      const num = Number(btn?.dataset.num || 0);
+      const pin = (document.getElementById('deletePostPin')?.value || '').trim();
+      if (!pin) { showToast('Введите ПИН конструктора'); return; }
+      btn.disabled = true;
+      btn.textContent = 'Удаляю…';
+      try {
+        await stoneApi('delete-post', { post_number: num, pin });
+        document.getElementById('deletePostModal').classList.add('hidden');
+        showToast(`Пост №${num} полностью удалён.`);
+        await loadCloudData(true);
+      } catch (err) {
+        showToast('Не удалось: ' + (err && err.message ? err.message : err));
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Удалить пост навсегда';
+      }
+    }
+    document.getElementById('deletePostModal').addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-action="confirm-delete-post"]');
+      if (btn) void confirmDeletePost(btn);
+    });
+    document.getElementById('deletePostPin').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        document.getElementById('confirmDeletePostBtn').click();
+      }
+    });
     bindModal('empModal', 'closeEmpModalBtn');
     bindModal('configModal', 'closeConfigModalBtn');
     bindModal('testModal', 'closeTestModalBtn');
@@ -4386,4 +4399,4 @@
   </script>
 </body>
 </html>
-<!-- build: 2026-11-24T17:39:37Z | v20 · авт обновление версии, синхронизация списка постов -->
+<!-- build: 2026-11-24T17:56:58Z | v21 · исправлена кнопка подтверждения удаления поста -->
