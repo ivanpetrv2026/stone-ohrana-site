@@ -586,7 +586,7 @@
     // Версия сборки. Публикуется в version.json и проверяется при каждом открытии:
     // если Telegram закешировал старую страницу — приложение само переоткроется
     // с адресом ?v=<актуальная версия>, минуя кэш Mini App.
-    const APP_VERSION = 'v24';
+    const APP_VERSION = 'v25';
     (function ensureFreshBuild() {
       try {
         const u = new URL(window.location.href);
@@ -670,7 +670,9 @@
       reminderT5Status: 'pending',
       selectedMelody: 'clear_pulse',
       capturedPhotoUrl: '',
-      offlineCacheCount: 0,
+      // Очередь оффлайн-отметок: [{ post_number, at, method }]. Живёт в localStorage,
+      // чтобы переживать перезагрузку страницы и закрытие Mini App.
+      offlineQueue: [],
       guideTab: 'tour',
       guideStep: 0,
       // Матрица постов и годовой план (этапы 1–2)
@@ -1553,6 +1555,7 @@
     // -----------------------------------------------------------------------
     function renderCheckinTab() {
       const { t5Human, arrivalHuman } = getT5ReminderDates();
+      const offlinePost = myOfflinePost();
       return `
         <div class="max-w-xl mx-auto space-y-3.5 min-w-0">
           <!-- Блок авто-прибытия 150м -->
@@ -1590,18 +1593,20 @@
             ` : ''}
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-slate-800/80">
-              <button type="button" data-action="offline-checkin" class="w-full py-2.5 px-3 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-xs font-medium text-amber-200 transition">
-                Оффлайн-кэш (№4 / №12)
-              </button>
-              ${state.offlineCacheCount > 0 ? `
+              ${offlinePost ? `
+                <button type="button" data-action="offline-checkin" class="w-full py-2.5 px-3 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-xs font-medium text-amber-200 transition">
+                  Отметка в оффлайн-зоне (№${offlinePost.num})
+                </button>` : `
+                <div class="py-2.5 px-3 rounded-xl bg-slate-950 border border-slate-800 text-[11px] text-slate-400 text-center">
+                  Оффлайн-отметка — только на посту из оффлайн-зоны
+                </div>`}
+              ${state.offlineQueue.length > 0 ? `
                 <button type="button" data-action="sync-cache" class="w-full py-2.5 px-3 rounded-xl bg-emerald-600 text-xs font-semibold text-white">
-                  Синхр. кэш (${state.offlineCacheCount})
-                </button>
-              ` : `
+                  Отправить кэш (${state.offlineQueue.length})
+                </button>` : `
                 <div class="py-2.5 px-3 rounded-xl bg-slate-950 border border-slate-800 text-[11px] text-slate-400 text-center">
                   Кэш пуст · Сеть в норме
-                </div>
-              `}
+                </div>`}
             </div>
           </div>
 
@@ -2861,13 +2866,9 @@
         if (inp) inp.click();
         return;
       } else if (act === 'offline-checkin') {
-        state.offlineCacheCount += 1;
-        void cloudCreateCheckin(currentEmployeeId(), 4, 'qr', true);
-        showToast('Нет сети в паркинге: отметка сохранена в кэш и отправлена в Supabase.');
+        await offlineCheckin();
       } else if (act === 'sync-cache') {
-        state.offlineCacheCount = 0;
-        setLiveBanner('Оффлайн-кэш с паркинга (№4 / №12) синхронизирован.');
-        showToast('Кэш успешно синхронизирован!');
+        await syncOfflineQueue(false);
       } else if (act === 'test-melody') {
         playFixedNotificationSound(state.selectedMelody);
         showToast('Тест фиксированного сигнала «Стоун Охрана» (6.5 сек)');
@@ -3183,13 +3184,19 @@
         }
         console.warn('stone-api checkin-150m:', err);
       }
-      // Сеть недоступна — фиксируем оффлайн-отметку честным методом «qr»,
-      // без заявки на авто-прибытие.
-      try {
-        await cloudCreateCheckin(currentEmployeeId(), postNumber, 'qr', true);
-      } catch (err) {
-        console.warn('checkin write skipped:', err);
+      // Сеть недоступна. Оффлайн-запись допустима только там, где она разрешена
+      // постом: иначе это был бы обход геозоны «по факту обрыва связи» (F1).
+      const post = allPosts().find(x => Number(x.num) === Number(postNumber));
+      if (!post || !post.offline) {
+        if (geoText) geoText.textContent = 'нет сети';
+        showToast('Нет связи с сервером — отметка не записана. Повторите, когда появится сеть.');
+        return;
       }
+      const at = new Date().toISOString();
+      state.offlineQueue.push({ post_number: Number(postNumber), at, method: 'qr' });
+      saveOfflineQueue();
+      render();
+      showToast('Нет сети: отметка сохранена на устройстве. Отправим при связи.');
     }
 
     // Единая точка записи: всё идёт через Edge Function, где личность берётся из подписи Telegram
@@ -3368,7 +3375,7 @@
           <div class="rounded-xl border ${s.tgLinked ? 'border-emerald-600/40' : 'border-slate-700/80'} bg-slate-900/60 p-2.5 flex items-center gap-2">
             <div class="min-w-0 flex-1">
               <div class="font-medium text-slate-100 truncate">${escHtml(s.name)}</div>
-              <div class="text-[10px] th-muted truncate">${s.post || 'Резерв'}</div>
+              <div class="text-[10px] th-muted truncate">${escHtml(s.post || 'Резерв')}</div>
             </div>
             <input id="setupTg${s.id}" type="text" inputmode="numeric" placeholder="Telegram ID" class="w-24 px-2 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-[11px] text-slate-100 placeholder:text-slate-600" />
             <button type="button" data-save-tg="${s.id}" class="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-[10px] font-semibold text-white shrink-0">OK</button>
@@ -3396,7 +3403,7 @@
             <div class="flex items-center justify-between gap-2">
               <div class="min-w-0">
                 <div class="font-medium text-slate-100 truncate">${escHtml(s.name)}</div>
-                <div class="text-[10px] th-muted truncate">${s.post || 'Резерв'}</div>
+                <div class="text-[10px] th-muted truncate">${escHtml(s.post || 'Резерв')}</div>
               </div>
               <div class="text-[10px] shrink-0 ${has ? 'text-emerald-400' : 'th-muted'}">${has ? (p.locked ? 'заблокирован' : 'код выдан') : 'нет кода'}</div>
             </div>
@@ -3466,16 +3473,101 @@
 
     // Отметка без GPS. Расстояние и признак авто клиент не передаёт —
     // сервер их не принимает и выводит сам.
-    async function cloudCreateCheckin(employeeId, postNumber, method, offline) {
+    // Ошибку НЕ глушим: вызывающий код обязан знать, записалась отметка или нет.
+    async function cloudCreateCheckin(postNumber, method, offline, clientAt) {
+      return stoneApi('checkin', {
+        post_number: postNumber,
+        method: method || 'qr',
+        offline: Boolean(offline),
+        client_at: clientAt || null
+      });
+    }
+
+    // --- Оффлайн-отметки: настоящая очередь, а не счётчик в памяти -----------
+    // Раньше кнопка «Оффлайн-кэш» слала отметку на пост №4, глотала ошибку и
+    // показывала «сохранено в кэш», хотя кэша не было. Теперь: отметку можно
+    // ставить только на свой пост из оффлайн-зоны, при обрыве сети она кладётся
+    // в localStorage с временем устройства и уходит на сервер при связи.
+    const OFFLINE_KEY = 'stone_offline_queue_v1';
+
+    function loadOfflineQueue() {
       try {
-        return await stoneApi('checkin', {
-          post_number: postNumber,
-          method: method,
-          offline: offline
-        });
+        const raw = localStorage.getItem(OFFLINE_KEY);
+        const arr = JSON.parse(raw || '[]');
+        return Array.isArray(arr)
+          ? arr.filter(x => x && Number(x.post_number) > 0).map(x => ({
+              post_number: Number(x.post_number),
+              at: String(x.at || new Date().toISOString()),
+              method: x.method === 'nfc' ? 'nfc' : 'qr'
+            }))
+          : [];
+      } catch (_) { return []; }
+    }
+
+    function saveOfflineQueue() {
+      try { localStorage.setItem(OFFLINE_KEY, JSON.stringify(state.offlineQueue)); } catch (_) {}
+    }
+
+    // Мой текущий пост — и только если он объявлен оффлайн-зоной.
+    function myOfflinePost() {
+      const me = state.staff.find(s => Number(s.id) === Number(currentEmployeeId()));
+      if (!me || !me.currentPostNumber) return null;
+      const p = allPosts().find(x => Number(x.num) === Number(me.currentPostNumber));
+      return p && p.offline ? p : null;
+    }
+
+    // Отправка очереди. Возвращает { sent, left, dropped }.
+    async function syncOfflineQueue(silent) {
+      if (!state.offlineQueue.length) {
+        if (!silent) showToast('Кэш пуст — все отметки уже на сервере.');
+        return { sent: 0, left: 0, dropped: 0 };
+      }
+      let sent = 0, dropped = 0;
+      const rest = [];
+      for (const item of state.offlineQueue.slice()) {
+        try {
+          await cloudCreateCheckin(item.post_number, item.method, true, item.at);
+          sent++;
+        } catch (err) {
+          if (err && err.status && err.status < 500) {
+            // Сервер отказал по существу (пост больше не оффлайн, отметка старше
+            // суток, время из будущего) — держать такую запись бессмысленно.
+            dropped++;
+            continue;
+          }
+          rest.push(item);
+        }
+      }
+      state.offlineQueue = rest;
+      saveOfflineQueue();
+      render();
+      if (!silent) {
+        showToast(`Синхронизация: отправлено ${sent}, осталось ${rest.length}${dropped ? `, отклонено ${dropped}` : ''}.`);
+      }
+      return { sent, left: rest.length, dropped };
+    }
+
+    // Поставить оффлайн-отметку: сразу в сеть, при обрыве — в очередь.
+    async function offlineCheckin() {
+      const post = myOfflinePost();
+      if (!post) {
+        showToast('Оффлайн-отметка доступна только на вашем посте из оффлайн-зоны.');
+        return;
+      }
+      const at = new Date().toISOString();
+      try {
+        await cloudCreateCheckin(post.num, 'qr', true, at);
+        showToast(`Отметка на посту №${post.num} записана на сервере.`);
+        await loadCloudData(true);
       } catch (err) {
-        console.warn('Checkin write failed:', err);
-        return null;
+        if (err && err.status) {
+          showToast('Сервер отказал: ' + (err.message || err.status));
+          return;
+        }
+        state.offlineQueue.push({ post_number: post.num, at, method: 'qr' });
+        saveOfflineQueue();
+        render();
+        showToast('Нет сети: отметка сохранена на устройстве. Отправим, когда появится связь.');
       }
     }
 
@@ -3992,9 +4084,9 @@
               return `
                 <div class="p-2.5 rounded-xl bg-slate-950 border ${d.ok ? 'border-emerald-600/40' : 'border-rose-600/40'} space-y-1">
                   <div class="text-[11px] text-slate-200 font-medium">${i + 1}. ${escHtml(q.text)}</div>
-                  <div class="text-[10px] ${d.ok ? 'text-emerald-300' : 'text-rose-300'}">Ваш ответ: ${mine != null ? q.options[mine] : '—'}</div>
-                  ${d.ok ? '' : `<div class="text-[10px] text-emerald-300">Верно: ${q.options[d.correct_index]}</div>`}
-                  ${d.explanation ? `<div class="text-[10px] text-slate-400">${d.explanation}</div>` : ''}
+                  <div class="text-[10px] ${d.ok ? 'text-emerald-300' : 'text-rose-300'}">Ваш ответ: ${mine != null ? escHtml(q.options[mine]) : '—'}</div>
+                  ${d.ok ? '' : `<div class="text-[10px] text-emerald-300">Верно: ${escHtml(q.options[d.correct_index])}</div>`}
+                  ${d.explanation ? `<div class="text-[10px] text-slate-400">${escHtml(d.explanation)}</div>` : ''}
                 </div>`;
             }).join('')}
           </div>
@@ -4417,6 +4509,8 @@
     });
 
     applyTheme();
+    // Очередь оффлайн-отметок переживает перезагрузку: поднимаем её до первого рендера.
+    state.offlineQueue = loadOfflineQueue();
     render();
 
     // Запуск: Telegram Mini App -> initData, иначе сохранённая веб-сессия, иначе экран входа
@@ -4424,16 +4518,22 @@
       if (telegramInitData()) {
         await stoneAuthTelegram();
         await loadCloudData(true);
-        return;
-      }
-      if (sessionToken) {
+      } else if (sessionToken) {
         const ok = await loadCloudData(true);
-        if (ok) return;
+        if (!ok) { resetGate(); showAuthGate(); }
+      } else {
+        resetGate();
+        showAuthGate();
       }
-      resetGate();
-      showAuthGate();
+      // Если в очереди остались отметки — отправляем их при каждом запуске.
+      if (state.offlineQueue.length) void syncOfflineQueue(true);
     })();
+
+    // Связь вернулась — досылаем то, что не ушло.
+    window.addEventListener('online', () => {
+      if (state.offlineQueue.length) void syncOfflineQueue(true);
+    });
   </script>
 </body>
 </html>
-<!-- build: 2026-11-27T09:20:00Z | v24 · геозона только по серверу, ПИН из секрета, HR-поля по роли -->
+<!-- build: 2026-11-27T09:56:00Z | v25 · оффлайн-отметка только по своему посту, настоящий кэш, лимиты ИИ -->
