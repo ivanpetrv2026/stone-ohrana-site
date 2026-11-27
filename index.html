@@ -586,7 +586,7 @@
     // Версия сборки. Публикуется в version.json и проверяется при каждом открытии:
     // если Telegram закешировал старую страницу — приложение само переоткроется
     // с адресом ?v=<актуальная версия>, минуя кэш Mini App.
-    const APP_VERSION = 'v25';
+    const APP_VERSION = 'v26';
     (function ensureFreshBuild() {
       try {
         const u = new URL(window.location.href);
@@ -1388,7 +1388,9 @@
       const nums = state.bookingPriorities.slice();
       const rows = nums.map((n, i) => {
         const p = POSTS_LIST.find(x => x.num === n);
-        return `${i + 1}) №${n}${p ? ' ' + p.name : ''}`;
+        // Название поста вводит командир (2…60 любых символов) — без escHtml
+        // это была stored XSS в сводке заявки (находка M6 четвёртого аудита).
+        return `${i + 1}) №${n}${p ? ' ' + escHtml(p.name) : ''}`;
       });
       const isAny = state.bookingMode === 'any' || !rows.length;
       const word = rows.length === 1 ? 'пост' : rows.length < 5 ? 'поста' : 'постов';
@@ -1573,12 +1575,19 @@
                 <span class="text-slate-400">Геопозиция устройства</span>
                 <span id="geoStatusText" class="font-medium text-slate-300 truncate">не проверена</span>
               </div>
-              <button type="button" data-action="geo-checkin" class="w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white transition">
-                Проверить радиус 150 м и отметиться
-              </button>
-              <p class="text-[10px] text-slate-500 leading-relaxed">
-                Нужно разрешение на геолокацию. Если пост без координат — сначала заполните «Объекты» в профиле.
-              </p>
+              ${myCurrentPost() ? `
+                <button type="button" data-action="geo-checkin" class="w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white transition">
+                  Проверить радиус 150 м и отметиться на №${myCurrentPost().num}
+                </button>
+                <p class="text-[10px] text-slate-500 leading-relaxed">
+                  Нужно разрешение на геолокацию. Если пост без координат — сначала заполните «Объекты» в профиле.
+                </p>` : `
+                <div class="py-2.5 px-3 rounded-xl bg-slate-900 border border-slate-800 text-[11px] text-slate-400 text-center">
+                  За вами не закреплён пост — отметку ставит старший смены
+                </div>
+                <p class="text-[10px] text-slate-500 leading-relaxed">
+                  Отметка принимается только на закреплённом посту: так присутствие нельзя подменить.
+                </p>`}
             </div>
 
             <input id="cameraInput" type="file" accept="image/*" capture="environment" class="hidden" />
@@ -1600,12 +1609,12 @@
                 <div class="py-2.5 px-3 rounded-xl bg-slate-950 border border-slate-800 text-[11px] text-slate-400 text-center">
                   Оффлайн-отметка — только на посту из оффлайн-зоны
                 </div>`}
-              ${state.offlineQueue.length > 0 ? `
+              ${myQueue().length > 0 ? `
                 <button type="button" data-action="sync-cache" class="w-full py-2.5 px-3 rounded-xl bg-emerald-600 text-xs font-semibold text-white">
-                  Отправить кэш (${state.offlineQueue.length})
+                  Отправить кэш (${myQueue().length})
                 </button>` : `
                 <div class="py-2.5 px-3 rounded-xl bg-slate-950 border border-slate-800 text-[11px] text-slate-400 text-center">
-                  Кэш пуст · Сеть в норме
+                  ${foreignQueueCount() > 0 ? 'Кэш другого сотрудника — отправит он сам' : 'Кэш пуст · Сеть в норме'}
                 </div>`}
             </div>
           </div>
@@ -1797,7 +1806,7 @@
                     <div class="flex items-start justify-between gap-2 min-w-0">
                       <div class="min-w-0">
                         <div class="text-xs font-semibold text-white">${escHtml(m.title)}</div>
-                        <div class="text-[10px] text-slate-400 mt-0.5">${m.description || ''}</div>
+                        <div class="text-[10px] text-slate-400 mt-0.5">${escHtml(m.description || '')}</div>
                       </div>
                       <span class="shrink-0 text-[10px] px-1.5 py-0.5 rounded ${s.passed ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30' : 'bg-slate-800 text-slate-300'}">${s.passed ? '✓ сдан' : 'не сдан'}</span>
                     </div>
@@ -1809,8 +1818,8 @@
                       <span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">изучено: ${fmtMinutes(s.study_seconds || 0)}</span>
                     </div>
                     <div class="grid grid-cols-2 gap-1.5">
-                      <button type="button" data-action="study-module" data-slug="${m.slug}" class="py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] text-slate-100">Читать конспект</button>
-                      <button type="button" data-action="test-module" data-slug="${m.slug}" class="py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-[11px] font-semibold text-white">Пройти тест</button>
+                      <button type="button" data-action="study-module" data-slug="${escHtml(m.slug)}" class="py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] text-slate-100">Читать конспект</button>
+                      <button type="button" data-action="test-module" data-slug="${escHtml(m.slug)}" class="py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-[11px] font-semibold text-white">Пройти тест</button>
                     </div>
                   </div>`;
               }).join('')}
@@ -2334,6 +2343,9 @@
       sessionToken = '';
       try { localStorage.removeItem(SESSION_KEY); } catch (_) {}
       try { localStorage.removeItem('stone_wfm_state_v1'); } catch (_) {}
+      // Очередь оффлайн-отметок принадлежит сотруднику: после выхода она не должна
+      // уйти от имени следующего, кто сядет за это устройство (M1).
+      clearOfflineQueue();
       state.authOk = false;
       state.me = null;
       state.authVia = '';
@@ -2890,7 +2902,12 @@
         setLiveBanner('⚠️ Отказ на Т-5д: №20, №19 и «Рубеж» получили алерт.');
         showToast('Отказ отправлен старшим смены и «Рубежу».');
       } else if (act === 'geo-checkin') {
-        await handleAutoArrival(1);
+        const own = myCurrentPost();
+        if (!own) {
+          showToast('За вами не закреплён пост — отметку ставит старший смены.');
+          return;
+        }
+        await handleAutoArrival(own.num);
         return;
       }
 
@@ -3128,32 +3145,18 @@
 
     // 3. Серверная проверка радиуса через Edge Function /checkin-150m
     async function stoneCheckin150m(postNumber, coords) {
-      const initData = telegramInitData();
-      if (!initData) throw new Error('Нет Telegram initData');
       const post = POSTS_LIST.find(p => p.num === postNumber);
       if (!post || !post.id) throw new Error('Пост не найден в базе');
       // Метод не отправляем: сервер сам решит, авто это или QR.
-      const res = await fetch(STONE_API_URL + '/checkin-150m', {
-        method: 'POST',
-        headers: Object.assign({
-          'x-telegram-init-data': initData,
-          'Content-Type': 'application/json'
-        }, STONE_API_HEADERS),
-        body: JSON.stringify({
-          post_id: post.id,
-          rotation_id: null,
-          lat: coords ? coords.lat : null,
-          lon: coords ? coords.lon : null,
-          is_offline_synced: false
-        })
+      // Идём через общий stoneApi, а не сырым fetch: иначе веб-сессия (вход по
+      // коду без Telegram) не могла поставить GPS-отметку — запрос уходил без
+      // заголовка сессии и получал 401.
+      return stoneApi('checkin-150m', {
+        post_id: post.id,
+        rotation_id: null,
+        lat: coords ? coords.lat : null,
+        lon: coords ? coords.lon : null
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        const err = new Error(data.error || ('HTTP ' + res.status));
-        err.status = res.status; // сервер отказал осознанно — повторять вслепую нельзя
-        throw err;
-      }
-      return data;
     }
 
     // Авто-прибытие: сервер проверяет GPS. Если сервер отказал — отметки нет.
@@ -3193,8 +3196,7 @@
         return;
       }
       const at = new Date().toISOString();
-      state.offlineQueue.push({ post_number: Number(postNumber), at, method: 'qr' });
-      saveOfflineQueue();
+      queueOfflineCheckin(Number(postNumber), at, 'qr');
       render();
       showToast('Нет сети: отметка сохранена на устройстве. Отправим при связи.');
     }
@@ -3301,8 +3303,11 @@
 
       const summary = document.getElementById('setupSummary');
       if (summary) {
+        // Посты без координат — не косметика: на них «прибытие» подтверждается
+        // самим сотрудником. Держим счётчик в шапке, а не только внутри вкладки.
+        const noGeoCount = allPosts().filter(p => p.isActive !== false && (p.lat == null || p.lon == null)).length;
         const base = st
-          ? `Координаты постов: ${st.postsWithCoords}/${st.postsTotal} · Telegram ID: ${st.staffLinked}/${st.staffTotal}`
+          ? `Координаты постов: ${st.postsWithCoords}/${st.postsTotal} · Telegram ID: ${st.staffLinked}/${st.staffTotal}${noGeoCount ? ` · без GPS: ${noGeoCount}` : ''}`
           : 'Статус недоступен (нет связи с Supabase)';
         const withPin = Object.keys(state.pinStatus).filter(k => state.pinStatus[k].has_pin).length;
         summary.textContent = manager ? `${base} · Коды: ${withPin}` : base;
@@ -3488,6 +3493,10 @@
     // показывала «сохранено в кэш», хотя кэша не было. Теперь: отметку можно
     // ставить только на свой пост из оффлайн-зоны, при обрыве сети она кладётся
     // в localStorage с временем устройства и уходит на сервер при связи.
+    //
+    // M1 четвёртого аудита: в записи не было владельца, поэтому на общем постовом
+    // планшете отметка уходила от имени следующего вошедшего. Теперь у каждой
+    // записи есть employee_id, синхронизируются только свои, а logout чистит ключ.
     const OFFLINE_KEY = 'stone_offline_queue_v1';
 
     function loadOfflineQueue() {
@@ -3498,7 +3507,8 @@
           ? arr.filter(x => x && Number(x.post_number) > 0).map(x => ({
               post_number: Number(x.post_number),
               at: String(x.at || new Date().toISOString()),
-              method: x.method === 'nfc' ? 'nfc' : 'qr'
+              method: x.method === 'nfc' ? 'nfc' : 'qr',
+              employee_id: x.employee_id != null ? Number(x.employee_id) : null
             }))
           : [];
       } catch (_) { return []; }
@@ -3508,23 +3518,76 @@
       try { localStorage.setItem(OFFLINE_KEY, JSON.stringify(state.offlineQueue)); } catch (_) {}
     }
 
-    // Мой текущий пост — и только если он объявлен оффлайн-зоной.
-    function myOfflinePost() {
+    function clearOfflineQueue() {
+      state.offlineQueue = [];
+      try { localStorage.removeItem(OFFLINE_KEY); } catch (_) {}
+    }
+
+    // Записи текущего сотрудника. Чужие остаются в хранилище: их владелец
+    // досылает сам, когда вернётся на это устройство.
+    function myQueue() {
+      const me = Number(currentEmployeeId());
+      return state.offlineQueue.filter(x => Number(x.employee_id) === me);
+    }
+
+    function foreignQueueCount() {
+      const me = Number(currentEmployeeId());
+      return state.offlineQueue.filter(x => Number(x.employee_id) !== me).length;
+    }
+
+    // Кладём в очередь с дедупликацией: повторное нажатие в течение минуты
+    // не создаёт вторую отметку на том же посту (L11).
+    function queueOfflineCheckin(postNumber, at, method) {
+      const me = Number(currentEmployeeId());
+      const num = Number(postNumber);
+      const t = new Date(at).getTime();
+      const dup = state.offlineQueue.some(x =>
+        Number(x.employee_id) === me &&
+        Number(x.post_number) === num &&
+        Math.abs(new Date(x.at).getTime() - t) < 60000
+      );
+      if (dup) return false;
+      state.offlineQueue.push({
+        post_number: num,
+        at: String(at),
+        method: method === 'nfc' ? 'nfc' : 'qr',
+        employee_id: me
+      });
+      saveOfflineQueue();
+      return true;
+    }
+
+    // Мой закреплённый пост — единственный, на котором сервер примет отметку
+    // (находка H1). Раньше кнопка GPS-прибытия была прибита к посту №1,
+    // поэтому у остальных охранников она либо молчала, либо била не туда.
+    function myCurrentPost() {
       const me = state.staff.find(s => Number(s.id) === Number(currentEmployeeId()));
       if (!me || !me.currentPostNumber) return null;
-      const p = allPosts().find(x => Number(x.num) === Number(me.currentPostNumber));
+      return allPosts().find(x => Number(x.num) === Number(me.currentPostNumber)) || null;
+    }
+
+    // Мой текущий пост — и только если он объявлен оффлайн-зоной.
+    function myOfflinePost() {
+      const p = myCurrentPost();
       return p && p.offline ? p : null;
     }
 
     // Отправка очереди. Возвращает { sent, left, dropped }.
     async function syncOfflineQueue(silent) {
-      if (!state.offlineQueue.length) {
-        if (!silent) showToast('Кэш пуст — все отметки уже на сервере.');
+      const own = myQueue();
+      if (!own.length) {
+        if (!silent) {
+          showToast(foreignQueueCount()
+            ? 'На устройстве есть отметки другого сотрудника — отправит он сам.'
+            : 'Кэш пуст — все отметки уже на сервере.');
+        }
         return { sent: 0, left: 0, dropped: 0 };
       }
+      const me = Number(currentEmployeeId());
       let sent = 0, dropped = 0;
       const rest = [];
       for (const item of state.offlineQueue.slice()) {
+        if (Number(item.employee_id) !== me) { rest.push(item); continue; }
         try {
           await cloudCreateCheckin(item.post_number, item.method, true, item.at);
           sent++;
@@ -3545,9 +3608,9 @@
       saveOfflineQueue();
       render();
       if (!silent) {
-        showToast(`Синхронизация: отправлено ${sent}, осталось ${rest.length}${dropped ? `, отклонено ${dropped}` : ''}.`);
+        showToast(`Синхронизация: отправлено ${sent}, осталось ${myQueue().length}${dropped ? `, отклонено ${dropped}` : ''}.`);
       }
-      return { sent, left: rest.length, dropped };
+      return { sent, left: myQueue().length, dropped };
     }
 
     // Поставить оффлайн-отметку: сразу в сеть, при обрыве — в очередь.
@@ -3569,8 +3632,7 @@
           showToast('Сервер отказал: ' + (err.message || err.status));
           return;
         }
-        state.offlineQueue.push({ post_number: post.num, at, method: 'qr' });
-        saveOfflineQueue();
+        queueOfflineCheckin(post.num, at, 'qr');
         render();
         showToast(err && err.status === 401
           ? 'Сессия истекла: отметка сохранена на устройстве. Войдите заново — отправим.'
@@ -4543,4 +4605,4 @@
   </script>
 </body>
 </html>
-<!-- build: 2026-11-27T09:56:00Z | v25 · оффлайн-отметка только по своему посту, настоящий кэш, лимиты ИИ -->
+<!-- build: 2026-11-27T10:45:00Z | v26 · отметка только на своём посту, очередь с владельцем, общий лимит запросов -->
