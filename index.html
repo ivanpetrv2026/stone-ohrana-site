@@ -3529,9 +3529,12 @@
           await cloudCreateCheckin(item.post_number, item.method, true, item.at);
           sent++;
         } catch (err) {
-          if (err && err.status && err.status < 500) {
-            // Сервер отказал по существу (пост больше не оффлайн, отметка старше
-            // суток, время из будущего) — держать такую запись бессмысленно.
+          // Отказ по существу (пост больше не оффлайн, отметка старше суток,
+          // время из будущего) — держать такую запись бессмысленно. А вот 401
+          // (сессия истекла) и 429 (лимит) — не повод терять отметку: оставляем.
+          const code = err && err.status;
+          const semantic = code === 400 || code === 403 || code === 404 || code === 409 || code === 410 || code === 413;
+          if (semantic) {
             dropped++;
             continue;
           }
@@ -3560,14 +3563,18 @@
         showToast(`Отметка на посту №${post.num} записана на сервере.`);
         await loadCloudData(true);
       } catch (err) {
-        if (err && err.status) {
+        // 401 (сессия истекла) и 5xx — не повод терять отметку: сохраняем и
+        // отправим после повторного входа. По существу сервер отказывает 400/403.
+        if (err && err.status && err.status !== 401 && err.status < 500) {
           showToast('Сервер отказал: ' + (err.message || err.status));
           return;
         }
         state.offlineQueue.push({ post_number: post.num, at, method: 'qr' });
         saveOfflineQueue();
         render();
-        showToast('Нет сети: отметка сохранена на устройстве. Отправим, когда появится связь.');
+        showToast(err && err.status === 401
+          ? 'Сессия истекла: отметка сохранена на устройстве. Войдите заново — отправим.'
+          : 'Нет сети: отметка сохранена на устройстве. Отправим, когда появится связь.');
       }
     }
 
