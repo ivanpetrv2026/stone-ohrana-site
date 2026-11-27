@@ -3,6 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="referrer" content="no-referrer" />
+  <!-- CSP: разрешаем только те источники, что реально нужны. Даже если в данные
+       попадёт чужой тег, скрипт с внешнего домена не загрузится, а данные
+       не уйдут никуда, кроме нашего Supabase. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://telegram.org https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://gjcqdesgbleaikjoemjb.supabase.co; frame-src https://t.me https://oauth.telegram.org; object-src 'none'; base-uri 'none'" />
   <title>Стоун Охрана — WFM Продакшн-интерфейс (Telegram + Веб)</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
@@ -581,7 +586,7 @@
     // Версия сборки. Публикуется в version.json и проверяется при каждом открытии:
     // если Telegram закешировал старую страницу — приложение само переоткроется
     // с адресом ?v=<актуальная версия>, минуя кэш Mini App.
-    const APP_VERSION = 'v22';
+    const APP_VERSION = 'v23';
     (function ensureFreshBuild() {
       try {
         const u = new URL(window.location.href);
@@ -702,55 +707,11 @@
       showAllStaff: false,
       tgAuth: { status: 'pending' },
       cloudEmployeeId: null,
-      staff: [
-        // Командный состав и ключевые посты
-        { id: 1,  av: 'nikolay_m',       name: 'Николай Михайлович', post: '№20 Старший (День)', shift: '08:00–20:00', status: 'on_watch',     postConfirmed: true,  core: true,  day: '10/15', note: 'Старший дневной смены · Авто-чекин' },
-        { id: 2,  av: 'evgeniy_owner',   name: 'Евгений',            post: '№19 Ночь / КПП №1',  shift: '20:00–08:00', status: 'on_watch',     postConfirmed: true,  core: true,  day: '10/15', note: 'Ночной старший / КПП с 20:00' },
-        { id: 3,  av: 'anton',           name: 'Антон Николаевич',   post: '№20 Старший (См. Б)',shift: '08:00–20:00', status: 'approved',     postConfirmed: true,  core: true,  day: 'Заезд 27 ноя', note: 'Старший смены · Утверждён' },
-        { id: 4,  av: 'starshiy_phone',  name: 'Старший смены (Раб. тел.)', post: 'Дежурный №20/№19', shift: '24/7', status: 'on_watch', postConfirmed: true, core: true, day: 'Пост. линия', note: 'Рабочий телефон старшего смены' },
-        { id: 5,  av: 'oleg_post8',      name: 'Олег',               post: '№8 Галерея (Ночь)',  shift: '02:00–14:00', status: 'on_watch',     postConfirmed: true,  core: true,  day: '9/15',  note: 'Особый график 02:00–14:00 · 38м' },
-        // Действующие посты на вахте (✓)
-        { id: 6,  av: 'sergey_medved',   name: 'Сергей Медведь',     post: '№1 КПП (День)',      shift: '08:00–20:00', status: 'on_watch',     postConfirmed: true,  core: true,  day: '11/15', note: 'Смена в 20:00 · Авто-чекин 42м' },
-        { id: 7,  av: 'aleksey_yur',     name: 'Алексей Юрьевич',    post: '№2 Патруль',         shift: '02:00–14:00', status: 'on_watch',     postConfirmed: true,  core: true,  day: '8/15',  note: 'Авто-чекин 55м + фото' },
-        { id: 8,  av: 'oleg_zhukov',     name: 'Олег Жуков',         post: '№4 Подз. паркинг',   shift: '08:00–20:00', status: 'on_watch',     postConfirmed: true,  core: true,  day: '12/15', note: 'Offline-кэш · Подтв. №20' },
-        { id: 9,  av: 'valeriy_5',       name: 'Валерий 5-й',        post: '№5 Секция 1',        shift: '02:00–14:00', status: 'on_watch',     postConfirmed: true,  core: true,  day: '7/15',  note: 'Авто-чекин 31м' },
-        { id: 10, av: 'yura_polkovnic',  name: 'Юра Polkovnic',      post: '№6 Секция 2',        shift: '14:00–02:00', status: 'on_watch',     postConfirmed: true,  core: true,  day: '13/15', note: 'Авто-чекин 29м' },
-        { id: 11, av: 'artur',           name: 'ARTUR',              post: '№7 Секция 3',        shift: '08:00–20:00', status: 'on_watch',     postConfirmed: true,  core: true,  day: '6/15',  note: 'Смена 08:00–20:00 · 47м' },
-        { id: 12, av: 'dmitriy',         name: 'Дмитрий',            post: '№9 Пропуск рабочих', shift: '08:00–20:00', status: 'on_watch',     postConfirmed: true,  core: true,  day: '10/15', note: 'Смена 08:00–20:00 · Спецдопуск' },
-        { id: 13, av: 'rif',             name: 'Риф',                post: '№10 Мониторная',     shift: '08:00–20:00', status: 'on_watch',     postConfirmed: true,  core: true,  day: '11/15', note: 'Оперативный пост 24/7' },
-        { id: 14, av: 'andrey_bondarev', name: 'Андрей Бондарев',    post: '№11 Надз. парковка', shift: '08:00–20:00', status: 'on_watch',     postConfirmed: true,  core: true,  day: '5/15',  note: 'Смена 08:00–20:00 · 84м' },
-        { id: 15, av: 'sergo_samusev',   name: 'SERGO SAMUSEV',      post: '№12 Выезд паркинга', shift: '08:00–20:00', status: 'on_watch',     postConfirmed: true,  core: true,  day: '14/15', note: '08:00–20:00 · Offline-кэш' },
-        // Утверждены к выходу (◎) — часть с постом, часть «Уточняется»
-        { id: 16, av: 'andrey',          name: 'Андрей',             post: '№1 КПП (Ночь)',      shift: '20:00–08:00', status: 'approved',     postConfirmed: true,  core: true,  day: 'Заезд 25 ноя', note: 'Пост подтверждён (№20)' },
-        { id: 17, av: 'aleksey',         name: 'Алексей',            post: 'Уточняется',         shift: '08:00–20:00', status: 'approved',     postConfirmed: false, core: true,  day: 'Заезд 25 ноя', note: 'Вахта утв. «Рубеж», пост ждёт' },
-        { id: 18, av: 'egor',            name: 'Егор',               post: 'Уточняется',         shift: '20:00–08:00', status: 'approved',     postConfirmed: false, core: false, day: 'Заезд 26 ноя', note: 'Вахта утв. №19 (ночь)' },
-        { id: 19, av: 'roman',           name: 'Роман',              post: '№7 Секция 3',        shift: '08:00–20:00', status: 'approved',     postConfirmed: true,  core: true,  day: 'Заезд 27 ноя', note: 'Костяк · Смена Б' },
-        // Резерв 2 недели (Жёлтый)
-        { id: 20, av: 'evgeniy_swans',   name: 'Евгений (См. Б)',    post: 'Резерв',             shift: '12ч',         status: 'reserve_2w',   postConfirmed: false, core: true,  day: 'Через 2 нед.', note: 'Допуск: №1, №9, №11' },
-        { id: 21, av: 'yuriy',           name: 'Юрий',               post: 'Резерв',             shift: '12ч',         status: 'reserve_2w',   postConfirmed: false, core: true,  day: 'Через 2 нед.', note: 'Готов на любой пост' },
-        { id: 22, av: 'maksimos',        name: 'MaksimOs',           post: 'Резерв',             shift: '12ч',         status: 'reserve_2w',   postConfirmed: false, core: false, day: 'Через 2 нед.', note: 'Допуск: №2, №5–7' },
-        { id: 23, av: 'nikolay',         name: 'Николай',            post: 'Резерв',             shift: '12ч',         status: 'reserve_2w',   postConfirmed: false, core: true,  day: 'Через 2 нед.', note: 'Допуск: №8, №10' },
-        { id: 24, av: 'ivan',            name: 'Иван',               post: 'Резерв',             shift: '12ч',         status: 'reserve_2w',   postConfirmed: false, core: false, day: 'Через 2 нед.', note: 'Готов на подмену' },
-        { id: 25, av: 'semen',           name: 'Семен',              post: 'Резерв',             shift: '12ч',         status: 'reserve_2w',   postConfirmed: false, core: false, day: 'Через 2 нед.', note: 'Допуск: №11, №12' },
-        // Резерв до месяца (Красный)
-        { id: 26, av: 'mikhail',         name: 'Михаил',             post: 'Резерв',             shift: '12ч',         status: 'reserve_1m',   postConfirmed: false, core: false, day: 'До месяца',    note: 'Отдых дома' },
-        { id: 27, av: 'evgeniy_cat',     name: 'Евгений (Ночь)',     post: 'Резерв',             shift: '20:00–08:00', status: 'reserve_1m',   postConfirmed: false, core: false, day: 'До месяца',    note: 'Допуск: №4, №12' },
-        { id: 28, av: 'evgeniy_e',       name: 'Евгений Е.',         post: 'Резерв',             shift: '12ч',         status: 'reserve_1m',   postConfirmed: false, core: false, day: 'До месяца',    note: 'Плановый отдых' },
-        { id: 29, av: 'bednyy',          name: 'Бедный',             post: 'Резерв',             shift: '12ч',         status: 'reserve_1m',   postConfirmed: false, core: false, day: 'До месяца',    note: 'Отдых после 30 дн.' },
-        { id: 30, av: 'lift_gruzovoy',   name: 'Лифт Грузовой',      post: 'Резерв',             shift: '08:00–20:00', status: 'reserve_1m',   postConfirmed: false, core: false, day: 'До месяца',    note: 'Специфика №9' },
-        // Более месяца (Серый)
-        { id: 31, av: 'medvedki',        name: 'Медведки',           post: 'Пауза',              shift: '—',           status: 'reserve_long', postConfirmed: false, core: false, day: 'Более месяца', note: 'Длительный отдых' },
-        { id: 32, av: 'evgeniy_e2',      name: 'Евгений С.',         post: 'Пауза',              shift: '—',           status: 'reserve_long', postConfirmed: false, core: false, day: 'Более месяца', note: 'Отпуск до января' },
-        { id: 33, av: 'maksim_perov',    name: 'Максим Перов',       post: 'Пауза',              shift: '—',           status: 'reserve_long', postConfirmed: false, core: false, day: 'Более месяца', note: 'Пауза' },
-        { id: 34, av: 'dmitriy_d',       name: 'Дмитрий Д.',         post: 'Пауза',              shift: '—',           status: 'reserve_long', postConfirmed: false, core: false, day: 'Более месяца', note: 'Пауза' },
-        { id: 35, av: 'yuriy_polkovnik2',name: 'Юрий Полковник',     post: 'Пауза',              shift: '—',           status: 'reserve_long', postConfirmed: false, core: false, day: 'Более месяца', note: 'Длительный отдых' }
-      ],
-      applicants: [
-        { id: 201, staffId: 20, av: 'evgeniy_swans', name: 'Евгений (См. Б)', status: 'reserve_2w', core: true,  horizon: '1 год (+40%)', mode: 'priorities', priorities: ['№1 КПП (20:00)', '№11 Парковка'], shiftApproved: false, confirmedPost: '' },
-        { id: 202, staffId: 17, av: 'aleksey',       name: 'Алексей',         status: 'approved',   core: true,  horizon: '6 мес (+25%)', mode: 'priorities', priorities: ['№9 Пропуск (08–20)', '№7 Секция 3'], shiftApproved: true,  confirmedPost: '' },
-        { id: 203, staffId: 21, av: 'yuriy',         name: 'Юрий',            status: 'reserve_2w', core: true,  horizon: '3 мес (+10%)', mode: 'any',        priorities: ['Вахта (любой пост)'], shiftApproved: false, confirmedPost: '' },
-        { id: 204, staffId: 27, av: 'evgeniy_cat',   name: 'Евгений (Ночь)',  status: 'reserve_1m', core: false, horizon: '1 мес (база)', mode: 'priorities', priorities: ['№4 Паркинг', '№12 Выезд'], shiftApproved: false, confirmedPost: '' }
-      ]
+      // Демо-ростер удалён: список сотрудников и заявок приходит только из
+      // get-base после проверки личности. Пустые массивы = честное «данных нет»,
+      // а не выдуманные фамилии в публичном репозитории.
+      staff: [],
+      applicants: []
     };
 
     // -----------------------------------------------------------------------
@@ -800,10 +761,13 @@
 
     // Приоритет: загруженный сотрудником аватар (Supabase Storage) -> встроенный снимок -> инициалы.
     function avatarHtml(avKey, status, sizeCls = 'w-8 h-8', url = '') {
-      const src = url || AVATARS[avKey];
+      const raw = String(url || AVATARS[avKey] || '');
+      // Ссылка на аватар приходит из базы: пускаем только http(s)/data:image,
+      // иначе javascript: в src сработает по клику.
+      const src = /^(https?:\/\/|data:image\/)/i.test(raw) ? raw : '';
       const ring = `avatar-ring-${status}`;
       if (src) {
-        return `<img src="${src}" alt="" loading="lazy" class="${sizeCls} rounded-full object-cover ${ring} shrink-0 bg-slate-800" />`;
+        return `<img src="${escHtml(src)}" alt="" loading="lazy" class="${sizeCls} rounded-full object-cover ${ring} shrink-0 bg-slate-800" />`;
       }
       return `<div class="${sizeCls} rounded-full bg-slate-800 ${ring} shrink-0 flex items-center justify-center text-[10px] text-slate-300 font-semibold">СО</div>`;
     }
@@ -960,9 +924,21 @@
       return `${Math.floor(m / 60)} ч ${m % 60} мин`;
     }
 
+    // Экранирование любого значения, пришедшего из базы или от пользователя,
+    // перед вставкой в innerHTML. Без него имя сотрудника с «<img onerror=…>»
+    // исполнится в браузере командира.
+    function escHtml(v) {
+      return String(v == null ? '' : v)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
     // Минимальный markdown -> HTML для конспектов модулей (без внешних библиотек)
     function mdToHtml(md) {
-      const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const esc = escHtml;
       const lines = String(md || '').split(/\r?\n/);
       let html = '';
       let inList = false;
@@ -1111,10 +1087,10 @@
                   ${avatarHtml(s.av, s.status, 'w-8 h-8', s.avatarUrl)}
                   <div class="min-w-0 flex-1">
                     <div class="flex items-center justify-between gap-1">
-                      <span class="text-[11px] font-semibold text-white truncate">${s.name}</span>
+                      <span class="text-[11px] font-semibold text-white truncate">${escHtml(s.name)}</span>
                       ${statusIcon(s.status)}
                     </div>
-                    <div class="text-[10px] ${s.post === 'Уточняется' ? 'text-yellow-300' : 'text-slate-400'} truncate">${s.post}</div>
+                    <div class="text-[10px] ${s.post === 'Уточняется' ? 'text-yellow-300' : 'text-slate-400'} truncate">${escHtml(s.post)}</div>
                   </div>
                 </div>
               `).join('')}
@@ -1127,25 +1103,25 @@
                     ${avatarHtml(s.av, s.status, 'w-11 h-11', s.avatarUrl)}
                     <div class="min-w-0 flex-1">
                       <div class="flex items-center justify-between gap-2">
-                        <span class="text-sm font-semibold text-white truncate">${s.name}</span>
+                        <span class="text-sm font-semibold text-white truncate">${escHtml(s.name)}</span>
                         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-900 border border-slate-700/80 text-[10px] text-slate-200 shrink-0">
                           ${statusIcon(s.status)} ${statusText(s.status)}
                         </span>
                       </div>
                       <div class="text-xs text-slate-300 mt-0.5 truncate">
-                        <span class="${s.post === 'Уточняется' ? 'text-yellow-300 font-medium' : 'text-slate-200'}">${s.post}</span>
+                        <span class="${s.post === 'Уточняется' ? 'text-yellow-300 font-medium' : 'text-slate-200'}">${escHtml(s.post)}</span>
                         <span class="text-slate-500"> · </span>
-                        <span class="text-blue-300 tabular-nums">${s.shift}</span>
+                        <span class="text-blue-300 tabular-nums">${escHtml(s.shift)}</span>
                       </div>
                     </div>
                   </div>
                   <div class="text-[11px] text-slate-400 border-t border-slate-800/80 pt-2 flex items-center justify-between gap-2 min-w-0">
-                    <span class="truncate">${s.note}</span>
-                    <span class="text-slate-300 shrink-0 tabular-nums">${s.day}</span>
+                    <span class="truncate">${escHtml(s.note)}</span>
+                    <span class="text-slate-300 shrink-0 tabular-nums">${escHtml(s.day)}</span>
                   </div>
                   <div class="flex items-center justify-between gap-2 min-w-0">
                     <div class="flex flex-wrap items-center gap-1 text-[10px] min-w-0">
-                      <span class="${s.attestationOk ? 'px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30' : 'text-slate-500'}" title="${s.attestationOk ? 'Аттестация сдана на нужный балл' : 'Материал по работе — во вкладке «Обучение»'}${(s.missingModules || []).length ? ': ' + (s.missingModules || []).map(m => m.title).join(', ') : ''}">${s.attestationOk ? '✓ аттестация' : 'материал к изучению'}</span>
+                      <span class="${s.attestationOk ? 'px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30' : 'text-slate-500'}" title="${s.attestationOk ? 'Аттестация сдана на нужный балл' : 'Материал по работе — во вкладке «Обучение»'}${(s.missingModules || []).length ? ': ' + (s.missingModules || []).map(m => escHtml(m.title)).join(', ') : ''}">${s.attestationOk ? '✓ аттестация' : 'материал к изучению'}</span>
                       ${s.planMonths ? `<span class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-300">план ${s.planMonths} мес.</span>` : ''}
                       ${s.discipline ? `<span class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-300">дисц. ${s.discipline > 0 ? '+' : ''}${s.discipline}</span>` : ''}
                       ${s.core ? '<span class="px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/25 text-emerald-300">костяк</span>' : ''}
@@ -1390,7 +1366,7 @@
                     const selected = idx !== -1;
                     return `
                       <button type="button" data-action="toggle-prio-post" data-num="${p.num}" class="px-2.5 py-2 rounded-xl text-[11px] font-medium border text-left transition flex items-center justify-between gap-1 min-w-0 ${selected ? 'bg-blue-600/20 border-blue-500 text-blue-200' : 'bg-slate-900 border-slate-800 text-slate-300'}">
-                        <span class="truncate">${selected ? `<span class="text-emerald-300 font-bold">✓</span> ${idx + 1}) ` : ''}№${p.num} ${p.name}</span>
+                        <span class="truncate">${selected ? `<span class="text-emerald-300 font-bold">✓</span> ${idx + 1}) ` : ''}№${p.num} ${escHtml(p.name)}</span>
                         <span class="text-[10px] ${selected ? 'text-emerald-300/80' : 'text-slate-400'} shrink-0">${shiftShort(p.shift)}</span>
                       </button>
                     `;
@@ -1445,7 +1421,7 @@
           <div class="rounded-xl border ${p.isActive === false ? 'border-slate-800 bg-slate-950/60 opacity-70' : 'border-slate-700/80 bg-slate-900/60'} p-2.5 space-y-1.5 min-w-0">
             <div class="flex items-start justify-between gap-2 min-w-0">
               <div class="min-w-0">
-                <div class="text-[11px] font-semibold text-white truncate">№${p.num} ${p.name}</div>
+                <div class="text-[11px] font-semibold text-white truncate">№${p.num} ${escHtml(p.name)}</div>
                 <div class="text-[10px] text-slate-400 truncate">
                   ${shiftShort(p.shift)} · ${zoneLabel(p.zone)}${isOffline ? ' · offline-first' : ''}
                 </div>
@@ -1517,14 +1493,14 @@
           <div class="space-y-2.5">
             ${list.length ? list.map(a => {
               const chips = scoreChips(a);
-              const missing = (a.missingModules || []).map(m => m.title).join(', ');
+              const missing = (a.missingModules || []).map(m => escHtml(m.title)).join(', ');
               return `
                 <div class="bg-[#111827] border ${a.shiftApproved && !a.confirmedPost ? 'border-yellow-400/40' : 'border-slate-800/90'} rounded-2xl p-4 space-y-3 min-w-0">
                   <div class="flex items-start gap-3 min-w-0">
                     ${avatarHtml(a.av, a.shiftApproved ? 'approved' : a.status, 'w-10 h-10', a.avatarUrl)}
                     <div class="min-w-0 flex-1">
                       <div class="flex flex-wrap items-center gap-1.5">
-                        <span class="text-sm font-semibold text-white truncate">${a.name}</span>
+                        <span class="text-sm font-semibold text-white truncate">${escHtml(a.name)}</span>
                         <span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-600/20 text-blue-200 border border-blue-500/30 tabular-nums">★ ${a.score != null ? a.score : '—'}</span>
                         ${a.core ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">Костяк</span>' : ''}
                         ${a.attestationOk === true
@@ -1550,7 +1526,7 @@
                         <span class="text-[11px] text-slate-400">Пост можно подтвердить позже</span>
                       ` : `
                         <select data-assign-select="${a.id}" class="w-full sm:flex-1 bg-slate-900 border border-slate-700 text-xs text-white rounded-xl px-3 py-2 outline-none min-w-0">
-                          ${activePosts().map(p => `<option value="№${p.num} ${p.name}" data-num="${p.num}">Пост: №${p.num} ${p.name}</option>`).join('')}
+                          ${activePosts().map(p => `<option value="№${p.num} ${escHtml(p.name)}" data-num="${p.num}">Пост: №${p.num} ${escHtml(p.name)}</option>`).join('')}
                         </select>
                         <button type="button" data-action="confirm-post" data-id="${a.id}" class="w-full sm:w-auto px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-semibold text-white transition shrink-0">
                           2. Подтвердить пост
@@ -1815,7 +1791,7 @@
                   <div class="rounded-xl border ${m.required_for_all || mandatory ? 'border-blue-500/40' : 'border-slate-800'} bg-slate-900/60 p-3 space-y-2 min-w-0">
                     <div class="flex items-start justify-between gap-2 min-w-0">
                       <div class="min-w-0">
-                        <div class="text-xs font-semibold text-white">${m.title}</div>
+                        <div class="text-xs font-semibold text-white">${escHtml(m.title)}</div>
                         <div class="text-[10px] text-slate-400 mt-0.5">${m.description || ''}</div>
                       </div>
                       <span class="shrink-0 text-[10px] px-1.5 py-0.5 rounded ${s.passed ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30' : 'bg-slate-800 text-slate-300'}">${s.passed ? '✓ сдан' : 'не сдан'}</span>
@@ -1865,7 +1841,7 @@
               <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-2 space-y-1 min-w-0">
                 <div class="flex items-start justify-between gap-2 min-w-0">
                   <div class="min-w-0">
-                    <div class="text-[11px] font-semibold text-white truncate">${p.name}</div>
+                    <div class="text-[11px] font-semibold text-white truncate">${escHtml(p.name)}</div>
                     <div class="text-[10px] text-slate-400 truncate">${p.post}</div>
                   </div>
                   <span class="shrink-0 text-[10px] font-semibold ${p.ok ? 'text-emerald-400' : 'text-amber-300'}">${p.ok ? '✓ допуск' : '⚠ нет'}</span>
@@ -1893,7 +1869,7 @@
               <tbody>
                 ${prep.map((p) => `
                   <tr class="border-t border-slate-800/70">
-                    <td class="py-1 pr-2 text-slate-200">${p.name}</td>
+                    <td class="py-1 pr-2 text-slate-200">${escHtml(p.name)}</td>
                     <td class="py-1 pr-2 text-slate-400">${p.post}</td>
                     <td class="py-1 pr-2 tabular-nums text-slate-300">${p.passed}/${p.total}</td>
                     <td class="py-1 pr-2 tabular-nums text-slate-300">${p.best}%</td>
@@ -1938,7 +1914,7 @@
           <div id="aiChatLog" class="space-y-2 max-h-72 overflow-y-auto">
             ${state.aiChat.length ? state.aiChat.map(m => `
               <div class="p-2.5 rounded-xl text-[11px] leading-relaxed ${m.role === 'user' ? 'bg-blue-600/15 border border-blue-500/30 text-blue-100 ml-6' : 'bg-slate-950 border border-slate-800 text-slate-200 mr-6'}">
-                <div class="text-[9px] uppercase tracking-wide ${m.role === 'user' ? 'text-blue-300' : 'text-slate-500'} mb-1">${m.role === 'user' ? 'Вы' : `Ассистент${m.provider === 'knowledge' ? ' · мгновенно' : m.ms ? ' · ' + (m.ms / 1000).toFixed(1).replace('.', ',') + ' с' : ''}`}</div>
+                <div class="text-[9px] uppercase tracking-wide ${m.role === 'user' ? 'text-blue-300' : 'text-slate-500'} mb-1">${m.role === 'user' ? 'Вы' : `Ассистент${m.provider === 'knowledge' ? ' · мгновенно' : (m.ms ? ' · ' + (m.ms / 1000).toFixed(1).replace('.', ',') + ' с' : '') + (m.provider === 'gemini' ? ' · резервный канал' : '')}`}</div>
                 ${m.note ? `<div class="text-[9px] text-slate-600 mb-1">по карте: «${m.note.replace(/</g, '&lt;')}»</div>` : ''}
                 <div class="whitespace-pre-wrap break-words">${m.text.replace(/</g, '&lt;')}</div>
               </div>
@@ -1998,7 +1974,7 @@
                 <span class="shrink-0 w-6 h-6 rounded-lg bg-slate-900 border border-slate-700 text-[11px] flex items-center justify-center">${m.icon}</span>
                 <span class="min-w-0 flex-1">
                   <span class="flex items-center gap-1.5 flex-wrap">
-                    <span class="text-[11px] font-semibold text-white">${i + 1}. ${m.title}</span>
+                    <span class="text-[11px] font-semibold text-white">${i + 1}. ${escHtml(m.title)}</span>
                     <span class="text-[9px] px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-400">${m.who}</span>
                   </span>
                   <span class="block text-[10px] text-slate-400 leading-relaxed mt-0.5">${m.items.join(' · ')}</span>
@@ -2338,15 +2314,36 @@
       }
     });
 
-    document.getElementById('openAuthModalBtn').addEventListener('click', () => {
+    // Полный выход: гасим сессию на сервере (версия сессии растёт, старый токен
+    // становится недействительным) и стираем локальные копии персональных данных.
+    async function clearLocalSession(revoke = true) {
+      if (revoke && sessionToken) {
+        try {
+          await fetch(STONE_API_URL + '/logout', {
+            method: 'POST',
+            headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+            body: '{}'
+          });
+        } catch (_) {}
+      }
+      sessionToken = '';
+      try { localStorage.removeItem(SESSION_KEY); } catch (_) {}
+      try { localStorage.removeItem('stone_wfm_state_v1'); } catch (_) {}
+      state.authOk = false;
+      state.me = null;
+      state.authVia = '';
+      state.staff = [];
+      state.applicants = [];
+      state.myBooking = null;
+      state.postsAll = [];
+      POSTS_LIST.length = 0;
+      syncAuthButton();
+      syncHeaderAvatar();
+    }
+
+    document.getElementById('openAuthModalBtn').addEventListener('click', async () => {
       if (state.authOk) {
-        sessionToken = '';
-        try { localStorage.removeItem(SESSION_KEY); } catch (_) {}
-        state.authOk = false;
-        state.me = null;
-        state.authVia = '';
-        syncAuthButton();
-        syncHeaderAvatar();
+        await clearLocalSession(true);
         resetGate();
         showAuthGate();
         showToast('Сессия закрыта. Данные снова доступны после входа.');
@@ -2917,11 +2914,11 @@
       });
     }
 
+    // На диск кладём только локальные настройки. Список сотрудников и заявок —
+    // персональные данные: они живут в памяти и приходят с сервера при каждом входе.
     function saveAppState() {
       try {
         localStorage.setItem('stone_wfm_state_v1', JSON.stringify({
-          staff: state.staff,
-          applicants: state.applicants,
           watchedVideos: state.watchedVideos,
           reminderT7Added: state.reminderT7Added,
           reminderT5Status: state.reminderT5Status,
@@ -2938,12 +2935,12 @@
       const rawState = localStorage.getItem('stone_wfm_state_v1');
       if (rawState) {
         const parsed = JSON.parse(rawState);
-        if (Array.isArray(parsed.staff)) state.staff = parsed.staff;
-        if (Array.isArray(parsed.applicants)) state.applicants = parsed.applicants;
         if (parsed.watchedVideos) state.watchedVideos = parsed.watchedVideos;
         if (typeof parsed.reminderT7Added === 'boolean') state.reminderT7Added = parsed.reminderT7Added;
         if (parsed.reminderT5Status) state.reminderT5Status = parsed.reminderT5Status;
         if (parsed.selectedMelody) state.selectedMelody = parsed.selectedMelody;
+        // Старые сборки писали сюда сотрудников и заявки — вычищаем при первом же запуске.
+        if ('staff' in parsed || 'applicants' in parsed) saveAppState();
       }
     } catch (_) {}
 
@@ -2996,7 +2993,9 @@
         try { data = await res.json(); } catch (_) {}
         if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
 
-        if (Array.isArray(data.staff) && data.staff.length) {
+        // Пустой ответ — это тоже ответ: список заменяем всегда, иначе на экране
+        // останутся устаревшие (или демонстрационные) люди.
+        if (Array.isArray(data.staff)) {
           state.staff = data.staff.map(x => Object.assign({}, x, { avatarUrl: x.avatarUrl || x.avatar_url || '' }));
         }
         if (Array.isArray(data.posts) && data.posts.length) {
@@ -3196,9 +3195,14 @@
       try { data = await res.json(); } catch (_) {}
       if (!res.ok) {
         if (res.status === 401) {
+          // Токен просрочен или отозван: локальные копии данных тоже не оставляем.
           sessionToken = '';
           try { localStorage.removeItem(SESSION_KEY); } catch (_) {}
           state.authOk = false;
+          state.me = null;
+          state.staff = [];
+          state.applicants = [];
+          state.myBooking = null;
           showAuthGate();
           syncAuthButton();
         }
@@ -3297,13 +3301,21 @@
       }
 
       if (state.setupTab === 'posts') {
-        body.innerHTML = allPosts().map(p => {
+        // Посты без координат не могут подтвердить прибытие автоматически — предупреждаем сразу.
+        const noGeo = allPosts().filter(p => p.isActive !== false && (p.lat == null || p.lon == null));
+        const geoWarn = noGeo.length
+          ? `<div class="mb-2 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-[11px] leading-snug">
+               Без координат: ${noGeo.length} ${noGeo.length === 1 ? 'пост' : 'постов'} (${noGeo.map(p => '№' + p.num).join(', ')}).
+               Авто-прибытие в радиусе 150 м для них не сработает — встаньте у поста и нажмите «📍 Мои координаты».
+             </div>`
+          : '';
+        body.innerHTML = geoWarn + allPosts().map(p => {
           const has = p.lat != null && p.lon != null;
           const archived = p.isActive === false;
           return `
             <div class="rounded-xl border ${has ? 'border-emerald-600/40' : 'border-slate-700/80'} bg-slate-900/60 p-2.5 space-y-2">
               <div class="flex items-center justify-between gap-2">
-                <div class="font-medium text-slate-100 truncate">№${p.num} ${p.name}${archived ? ' <span class="text-[10px] text-slate-500">· в архиве</span>' : ''}</div>
+                <div class="font-medium text-slate-100 truncate">№${p.num} ${escHtml(p.name)}${archived ? ' <span class="text-[10px] text-slate-500">· в архиве</span>' : ''}</div>
                 <div class="text-[10px] shrink-0 ${has ? 'text-emerald-400' : 'text-amber-400'}">${has ? '✓ GPS' : 'нет GPS'}</div>
               </div>
               <div class="flex items-center gap-1.5">
@@ -3343,7 +3355,7 @@
         ${rows.map(s => `
           <div class="rounded-xl border ${s.tgLinked ? 'border-emerald-600/40' : 'border-slate-700/80'} bg-slate-900/60 p-2.5 flex items-center gap-2">
             <div class="min-w-0 flex-1">
-              <div class="font-medium text-slate-100 truncate">${s.name}</div>
+              <div class="font-medium text-slate-100 truncate">${escHtml(s.name)}</div>
               <div class="text-[10px] th-muted truncate">${s.post || 'Резерв'}</div>
             </div>
             <input id="setupTg${s.id}" type="text" inputmode="numeric" placeholder="Telegram ID" class="w-24 px-2 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-[11px] text-slate-100 placeholder:text-slate-600" />
@@ -3356,7 +3368,7 @@
       const issued = state.lastPin;
       const issuedHtml = issued ? `
         <div class="rounded-xl border border-emerald-600/40 bg-emerald-500/10 p-3 space-y-2">
-          <div class="text-[10px] text-emerald-300">Код для ${issued.name} — показан один раз</div>
+          <div class="text-[10px] text-emerald-300">Код для ${escHtml(issued.name)} — показан один раз</div>
           <div class="flex items-center gap-2">
             <div class="text-xl font-bold tracking-[0.28em] tabular-nums text-emerald-200">${issued.pin}</div>
             <button type="button" data-copy-pin="${issued.pin}" class="ml-auto px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-[10px] text-slate-200 shrink-0">Скопировать</button>
@@ -3371,7 +3383,7 @@
           <div class="rounded-xl border ${has ? 'border-emerald-600/40' : 'border-slate-700/80'} bg-slate-900/60 p-2.5 space-y-2">
             <div class="flex items-center justify-between gap-2">
               <div class="min-w-0">
-                <div class="font-medium text-slate-100 truncate">${s.name}</div>
+                <div class="font-medium text-slate-100 truncate">${escHtml(s.name)}</div>
                 <div class="text-[10px] th-muted truncate">${s.post || 'Резерв'}</div>
               </div>
               <div class="text-[10px] shrink-0 ${has ? 'text-emerald-400' : 'th-muted'}">${has ? (p.locked ? 'заблокирован' : 'код выдан') : 'нет кода'}</div>
@@ -3584,7 +3596,7 @@
           <span class="text-[10px] th-muted">Текущий пост</span>
           <select id="empPostSelect" class="mt-1 w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-slate-100">
             <option value="">Не закреплён (Резерв)</option>
-            ${posts.map(p => `<option value="${p.num}" ${Number(s.currentPostNumber) === Number(p.num) ? 'selected' : ''}>№${p.num} ${p.name}</option>`).join('')}
+            ${posts.map(p => `<option value="${p.num}" ${Number(s.currentPostNumber) === Number(p.num) ? 'selected' : ''}>№${p.num} ${escHtml(p.name)}</option>`).join('')}
           </select>
         </label>
         <div class="grid grid-cols-2 gap-2">
@@ -3624,7 +3636,7 @@
           <input id="empNoteInput" type="text" maxlength="200" value="${String(s.note || '').replace(/"/g, '&quot;')}" class="mt-1 w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-slate-100" />
         </label>
         <div class="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-[10px] text-slate-400 leading-relaxed">
-          Допуск: ${s.attestationOk ? '✓ сдан' : '⚠ не сдан'} ${(s.missingModules || []).map(m => m.title).join(', ')}
+          Допуск: ${s.attestationOk ? '✓ сдан' : '⚠ не сдан'} ${(s.missingModules || []).map(m => escHtml(m.title)).join(', ')}
           · План: ${s.planMonths || 0} мес.
         </div>
         <label class="flex items-center gap-2 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30">
@@ -3967,7 +3979,7 @@
               const mine = a.answers[q.id];
               return `
                 <div class="p-2.5 rounded-xl bg-slate-950 border ${d.ok ? 'border-emerald-600/40' : 'border-rose-600/40'} space-y-1">
-                  <div class="text-[11px] text-slate-200 font-medium">${i + 1}. ${q.text}</div>
+                  <div class="text-[11px] text-slate-200 font-medium">${i + 1}. ${escHtml(q.text)}</div>
                   <div class="text-[10px] ${d.ok ? 'text-emerald-300' : 'text-rose-300'}">Ваш ответ: ${mine != null ? q.options[mine] : '—'}</div>
                   ${d.ok ? '' : `<div class="text-[10px] text-emerald-300">Верно: ${q.options[d.correct_index]}</div>`}
                   ${d.explanation ? `<div class="text-[10px] text-slate-400">${d.explanation}</div>` : ''}
@@ -4004,7 +4016,7 @@
           ${a.questions.map((q, i) => `
             <div class="p-2.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
               <div class="flex items-start justify-between gap-1.5 min-w-0">
-                <div class="text-[11px] text-slate-200 font-medium min-w-0">${i + 1}. ${q.text}</div>
+                <div class="text-[11px] text-slate-200 font-medium min-w-0">${i + 1}. ${escHtml(q.text)}</div>
                 <button type="button" data-speak="${i}" class="speak-btn shrink-0 w-6 h-6 rounded-lg bg-slate-900 border border-slate-700 text-[10px] text-emerald-300" title="Прослушать вопрос с вариантами">🔊</button>
               </div>
               <div class="space-y-1">
@@ -4129,6 +4141,9 @@
     function showAuthGate() {
       const g = document.getElementById('authGate');
       if (g) g.classList.remove('hidden');
+      // Фиксированный оверлей не мешает прокрутке страницы: без этого
+      // витрину можно было открыть скроллом мимо экрана входа.
+      document.body.style.overflow = 'hidden';
     }
     // Возврат экрана входа к первому шагу: без старого кода и статуса
     function resetGate() {
@@ -4215,6 +4230,7 @@
     function hideAuthGate() {
       const g = document.getElementById('authGate');
       if (g) g.classList.add('hidden');
+      document.body.style.overflow = '';
       stopGatePoll();
     }
     function stopGatePoll() {
@@ -4272,6 +4288,8 @@
             if (ok) showToast(`Вход выполнен: ${data.employee.full_name}`);
           } else if (data.status === 'code_received') {
             document.getElementById('gateStatus').textContent = 'Код принят. Подтвердите вход в боте.';
+          } else if (data.status === 'rate_limited') {
+            document.getElementById('gateStatus').textContent = 'Слишком частые запросы. Подождите минуту — код остаётся действительным.';
           } else if (data.status === 'expired' || data.status === 'used' || res.status === 410) {
             stopGatePoll();
             document.getElementById('gateStatus').textContent = 'Код истёк. Получите новый.';
@@ -4399,4 +4417,4 @@
   </script>
 </body>
 </html>
-<!-- build: 2026-11-27T06:52:10Z | v22 · безопасность в карте знаний, честный текст про фото чекина -->
+<!-- build: 2026-11-27T08:40:00Z | v23 · аудит: экранирование, CSP, отзыв сессий, лимиты, честные напоминания -->
