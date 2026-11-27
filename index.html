@@ -7,7 +7,7 @@
   <!-- CSP: разрешаем только те источники, что реально нужны. Даже если в данные
        попадёт чужой тег, скрипт с внешнего домена не загрузится, а данные
        не уйдут никуда, кроме нашего Supabase. -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://telegram.org https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://gjcqdesgbleaikjoemjb.supabase.co; frame-src https://t.me https://oauth.telegram.org; object-src 'none'; base-uri 'none'" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://telegram.org https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://gjcqdesgbleaikjoemjb.supabase.co; connect-src 'self' https://gjcqdesgbleaikjoemjb.supabase.co; frame-src https://t.me https://oauth.telegram.org; object-src 'none'; base-uri 'none'" />
   <title>Стоун Охрана — WFM Продакшн-интерфейс (Telegram + Веб)</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
@@ -438,8 +438,8 @@
       <div class="p-4 space-y-3 text-xs">
         <div class="p-3 rounded-xl bg-rose-500/10 border border-rose-500/25 text-[11px] text-rose-200 leading-relaxed">
           Пост <b id="deletePostLabel"></b> исчезнет из матрицы. С сотрудников он будет снят,
-          истории чекинов и назначения удалятся, в заявках пост уберётся из приоритетов.
-          Отменить это нельзя — архив не создаётся.
+          назначения удалятся, а история отметок сохранится — без привязки к посту.
+          В заявках пост уберётся из приоритетов. Отменить это нельзя — архив не создаётся.
         </div>
         <label class="block">
           <span class="text-[10px] text-slate-400">ПИН конструктора</span>
@@ -586,7 +586,7 @@
     // Версия сборки. Публикуется в version.json и проверяется при каждом открытии:
     // если Telegram закешировал старую страницу — приложение само переоткроется
     // с адресом ?v=<актуальная версия>, минуя кэш Mini App.
-    const APP_VERSION = 'v23';
+    const APP_VERSION = 'v24';
     (function ensureFreshBuild() {
       try {
         const u = new URL(window.location.href);
@@ -1430,7 +1430,7 @@
                 <div class="flex items-center gap-1 shrink-0">
                   <button type="button" data-action="edit-post" data-num="${p.num}" title="Редактировать" class="w-6 h-6 rounded-lg bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-200">✎</button>
                   <button type="button" data-action="toggle-post" data-num="${p.num}" title="${p.isActive === false ? 'Вернуть в работу' : 'Архивировать'}" class="w-6 h-6 rounded-lg ${p.isActive === false ? 'bg-emerald-600/25 text-emerald-300' : 'bg-slate-800 hover:bg-rose-600/30 text-slate-300'} text-[10px]">${p.isActive === false ? '↺' : '⏻'}</button>
-                  ${[19, 20].includes(Number(p.num)) ? '' : `<button type="button" data-action="delete-post" data-num="${p.num}" title="Удалить полностью (ПИН 1111)" class="w-6 h-6 rounded-lg bg-slate-800 hover:bg-red-600/40 text-[10px] text-slate-400 hover:text-white">🗑</button>`}
+                  ${[19, 20].includes(Number(p.num)) ? '' : `<button type="button" data-action="delete-post" data-num="${p.num}" title="Удалить полностью (нужен ПИН конструктора)" class="w-6 h-6 rounded-lg bg-slate-800 hover:bg-red-600/40 text-[10px] text-slate-400 hover:text-white">🗑</button>`}
                 </div>` : ''}
             </div>
             <div class="flex items-center justify-between gap-2 text-[10px]">
@@ -1512,7 +1512,7 @@
                       <div class="text-[11px] text-blue-300 mt-0.5">Горизонт: ${a.horizon}</div>
                       ${chips.length ? `<div class="text-[10px] text-slate-400 mt-0.5">${chips.join(' · ')}</div>` : ''}
                       <div class="flex flex-wrap gap-1 mt-2">
-                        ${(a.priorities || []).map((pr, i) => `<span class="px-2 py-0.5 rounded-lg bg-slate-900 border border-slate-800 text-[11px] text-slate-200">${a.mode === 'priorities' ? `${i + 1}) ` : ''}${pr}</span>`).join('')}
+                        ${(a.priorities || []).map((pr, i) => `<span class="px-2 py-0.5 rounded-lg bg-slate-900 border border-slate-800 text-[11px] text-slate-200">${a.mode === 'priorities' ? `${i + 1}) ` : ''}${escHtml(pr)}</span>`).join('')}
                       </div>
                     </div>
                   </div>
@@ -1719,7 +1719,7 @@
       ],
       dev: [
         'Какие слабые места сейчас в логике скоринга и расстановки?',
-        'Как безопасно изменить веса приоритета через app_config (ПИН 1111)?',
+        'Как безопасно изменить веса приоритета через app_config?',
         'Как добавить новый модуль или вопрос в аттестацию?',
         'Как проверить статус /health и RLS-политики?',
         'Какие метрики дисциплины стоит добавить в будущем?',
@@ -1842,7 +1842,7 @@
                 <div class="flex items-start justify-between gap-2 min-w-0">
                   <div class="min-w-0">
                     <div class="text-[11px] font-semibold text-white truncate">${escHtml(p.name)}</div>
-                    <div class="text-[10px] text-slate-400 truncate">${p.post}</div>
+                    <div class="text-[10px] text-slate-400 truncate">${escHtml(p.post)}</div>
                   </div>
                   <span class="shrink-0 text-[10px] font-semibold ${p.ok ? 'text-emerald-400' : 'text-amber-300'}">${p.ok ? '✓ допуск' : '⚠ нет'}</span>
                 </div>
@@ -1870,7 +1870,7 @@
                 ${prep.map((p) => `
                   <tr class="border-t border-slate-800/70">
                     <td class="py-1 pr-2 text-slate-200">${escHtml(p.name)}</td>
-                    <td class="py-1 pr-2 text-slate-400">${p.post}</td>
+                    <td class="py-1 pr-2 text-slate-400">${escHtml(p.post)}</td>
                     <td class="py-1 pr-2 tabular-nums text-slate-300">${p.passed}/${p.total}</td>
                     <td class="py-1 pr-2 tabular-nums text-slate-300">${p.best}%</td>
                     <td class="py-1 pr-2 tabular-nums text-slate-300">${p.time}</td>
@@ -2862,7 +2862,7 @@
         return;
       } else if (act === 'offline-checkin') {
         state.offlineCacheCount += 1;
-        void cloudCreateCheckin(currentEmployeeId(), 4, 'qr', null, false, true);
+        void cloudCreateCheckin(currentEmployeeId(), 4, 'qr', true);
         showToast('Нет сети в паркинге: отметка сохранена в кэш и отправлена в Supabase.');
       } else if (act === 'sync-cache') {
         state.offlineCacheCount = 0;
@@ -3126,11 +3126,12 @@
     }
 
     // 3. Серверная проверка радиуса через Edge Function /checkin-150m
-    async function stoneCheckin150m(postNumber, coords, method) {
+    async function stoneCheckin150m(postNumber, coords) {
       const initData = telegramInitData();
       if (!initData) throw new Error('Нет Telegram initData');
       const post = POSTS_LIST.find(p => p.num === postNumber);
       if (!post || !post.id) throw new Error('Пост не найден в базе');
+      // Метод не отправляем: сервер сам решит, авто это или QR.
       const res = await fetch(STONE_API_URL + '/checkin-150m', {
         method: 'POST',
         headers: Object.assign({
@@ -3142,16 +3143,19 @@
           rotation_id: null,
           lat: coords ? coords.lat : null,
           lon: coords ? coords.lon : null,
-          method: method || 'auto_geo_150m',
           is_offline_synced: false
         })
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const err = new Error(data.error || ('HTTP ' + res.status));
+        err.status = res.status; // сервер отказал осознанно — повторять вслепую нельзя
+        throw err;
+      }
       return data;
     }
 
-    // Авто-прибытие: сначала честная проверка на сервере, иначе локальный RPC
+    // Авто-прибытие: сервер проверяет GPS. Если сервер отказал — отметки нет.
     async function handleAutoArrival(postNumber) {
       const geoText = document.getElementById('geoStatusText');
       if (geoText) geoText.textContent = 'определяю…';
@@ -3161,20 +3165,28 @@
         showToast('Геопозиция недоступна. Разрешите доступ в браузере.');
         return;
       }
-      if (coords) {
-        try {
-          const r = await stoneCheckin150m(postNumber, coords);
-          setLiveBanner(`Сервер подтвердил прибытие: ${r.distance_m != null ? r.distance_m + ' м до поста' : 'пост без GPS-привязки'} → «На вахте (✓)»`);
-          showToast('Прибытие подтверждено сервером (stone-api).');
-          await loadCloudData(true);
-          return;
-        } catch (err) {
-          console.warn('stone-api checkin-150m:', err);
-          showToast('Сервер: ' + (err && err.message ? err.message : err) + ' — запись локально.');
-        }
-      }
       try {
-        await cloudCreateCheckin(currentEmployeeId(), postNumber, 'auto_geo_150m', null, true, false);
+        const r = await stoneCheckin150m(postNumber, coords);
+        setLiveBanner(r.auto_arrived
+          ? `Сервер подтвердил прибытие: ${r.distance_m} м до поста → «На вахте (✓)»`
+          : `Сервер зафиксировал отметку без GPS (пост без координат) → «На вахте (✓)»`);
+        showToast('Прибытие подтверждено сервером (stone-api).');
+        await loadCloudData(true);
+        return;
+      } catch (err) {
+        if (err && err.status) {
+          // Отказ по существу: вне радиуса или нет координат. Локальную «победную»
+          // запись не создаём — иначе контроль присутствия обходится.
+          if (geoText) geoText.textContent = 'не подтверждено';
+          showToast('Прибытие не подтверждено: ' + (err.message || err.status));
+          return;
+        }
+        console.warn('stone-api checkin-150m:', err);
+      }
+      // Сеть недоступна — фиксируем оффлайн-отметку честным методом «qr»,
+      // без заявки на авто-прибытие.
+      try {
+        await cloudCreateCheckin(currentEmployeeId(), postNumber, 'qr', true);
       } catch (err) {
         console.warn('checkin write skipped:', err);
       }
@@ -3452,13 +3464,13 @@
       return stoneApi('confirm-post', { rotation_id: rotationId, post_number: postNumber, force_override: Boolean(force) });
     }
 
-    async function cloudCreateCheckin(employeeId, postNumber, method, distanceM, auto, offline) {
+    // Отметка без GPS. Расстояние и признак авто клиент не передаёт —
+    // сервер их не принимает и выводит сам.
+    async function cloudCreateCheckin(employeeId, postNumber, method, offline) {
       try {
         return await stoneApi('checkin', {
           post_number: postNumber,
           method: method,
-          distance_m: distanceM,
-          auto: auto,
           offline: offline
         });
       } catch (err) {
@@ -4289,14 +4301,21 @@
           } else if (data.status === 'code_received') {
             document.getElementById('gateStatus').textContent = 'Код принят. Подтвердите вход в боте.';
           } else if (data.status === 'rate_limited') {
-            document.getElementById('gateStatus').textContent = 'Слишком частые запросы. Подождите минуту — код остаётся действительным.';
+            // Опрос останавливаем: каждый следующий запрос только продлевает окно
+            // лимита, и человек не смог бы войти, пока не закроет страницу.
+            stopGatePoll();
+            document.getElementById('gateStatus').textContent =
+              'Слишком частые запросы. Подождите минуту и нажмите «Получить новый код».';
+            document.getElementById('gateRetryBtn').classList.remove('hidden');
           } else if (data.status === 'expired' || data.status === 'used' || res.status === 410) {
             stopGatePoll();
             document.getElementById('gateStatus').textContent = 'Код истёк. Получите новый.';
             document.getElementById('gateRetryBtn').classList.remove('hidden');
           }
         } catch (_) {}
-      }, 2000);
+        // 3 с вместо 2 с: срок жизни кода 10 минут, запас по лимитам больше,
+        // а ожидание для человека не меняется.
+      }, 3000);
     }
 
     document.getElementById('gateRequestBtn').addEventListener('click', requestLoginCode);
@@ -4417,4 +4436,4 @@
   </script>
 </body>
 </html>
-<!-- build: 2026-11-27T08:40:00Z | v23 · аудит: экранирование, CSP, отзыв сессий, лимиты, честные напоминания -->
+<!-- build: 2026-11-27T09:20:00Z | v24 · геозона только по серверу, ПИН из секрета, HR-поля по роли -->
